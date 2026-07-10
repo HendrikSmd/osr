@@ -3,11 +3,15 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <thread>
 #include <tuple>
 
 #include "date/tz.h"
 
+#include "osr/routing/instructions/meta/visited_junction.h"
+#include "osr/routing/instructions/meta/way_segment.h"
+#include "osr/types.h"
 #include "utl/parallel_for.h"
 #include "utl/to_vec.h"
 #include "utl/verify.h"
@@ -186,6 +190,7 @@ ways::ways(std::filesystem::path p, cista::mmap::protection const mode)
       strings_{mm_vec<char>(mm("strings_data.bin")),
                mm_vec<std::uint64_t>(mm("strings_idx.bin"))},
       way_names_{mm("way_names.bin")},
+      way_instruction_properties_{mm("way_instruction_properties.bin")},
       way_has_conditional_access_no_{
           mm_vec<std::uint64_t>(mm("way_has_conditional_access_no"))},
       way_conditional_access_no_{mm("way_conditional_access_no")} {}
@@ -502,6 +507,7 @@ void ways::sync() {
   strings_.data_.mmap_.sync();
   strings_.bucket_starts_.mmap_.sync();
   way_names_.mmap_.sync();
+  way_instruction_properties_.mmap_.sync();
 }
 
 std::optional<std::string_view> ways::get_access_restriction(
@@ -526,6 +532,107 @@ cista::wrapped<ways::routing> ways::routing::read(
 
 void ways::routing::write(std::filesystem::path const& p) const {
   return cista::write(p / "routing.bin", *this);
+}
+
+std::optional<way_segment> ways::make_segment(way_idx_t const way_idx,
+                                              osm_node_idx_t const from,
+                                              osm_node_idx_t const to,
+                                              direction const dir) const {
+  if (static_cast<size_t>(to_idx(way_idx)) >= way_osm_nodes_.size()) {
+    return std::nullopt;
+  }
+
+  const auto& osm_nodes = way_osm_nodes_[way_idx];
+  const auto is_forward = dir == direction::kForward;
+
+  const auto first_it = std::ranges::find(osm_nodes, is_forward ? from : to);
+  if (first_it == osm_nodes.end()) {
+    return std::nullopt;
+  }
+
+  const auto second_it =
+      std::find(first_it, osm_nodes.end(), is_forward ? to : from);
+  if (second_it == osm_nodes.end()) {
+    return std::nullopt;
+  }
+
+  auto const first_idx =
+      static_cast<std::uint16_t>(std::distance(osm_nodes.begin(), first_it));
+  auto const second_idx =
+      static_cast<std::uint16_t>(std::distance(osm_nodes.begin(), second_it));
+
+  return way_segment(way_idx, is_forward ? first_idx : second_idx,
+                     is_forward ? second_idx : first_idx);
+}
+
+std::optional<way_segment> ways::make_segment(
+    way_idx_t const way_idx,
+    osm_node_idx_t const from,
+    direction const dir,
+    distance_t const min_distance) const {
+  const auto osm_nodes = way_osm_nodes_[way_idx];
+  const auto is_search_forward = dir == direction::kForward;
+
+  auto it = [&] {
+    if (is_search_forward) {
+      return std::find(osm_nodes.begin(), osm_nodes.end(), from);
+    }
+
+    auto rit = std::find(osm_nodes.rbegin(), osm_nodes.rend(), from);
+    return rit == osm_nodes.rend() ? osm_nodes.end() : std::prev(rit.base());
+  }();
+
+  if (it == osm_nodes.end()) {
+    return std::nullopt;
+  }
+
+  const auto from_node_idx =
+      static_cast<std::uint16_t>(std::distance(osm_nodes.begin(), it));
+
+  if ((is_search_forward && from_node_idx + 1U < osm_nodes.size()) ||
+      (!is_search_forward && from_node_idx > 0)) {
+    const auto to_node_idx = get_next_osm_way_node_idx_or_last(
+        way_idx, from_node_idx, dir, min_distance);
+    if (to_node_idx != from_node_idx) {
+      return way_segment(way_idx, from_node_idx, to_node_idx);
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::uint16_t ways::get_next_osm_way_node_idx_or_last(
+    way_idx_t const way_idx,
+    std::uint16_t const node_idx,
+    direction const dir,
+    distance_t const min_distance = 10) const {
+  const auto polyline = way_polylines_[way_idx];
+
+  if (polyline.size() <= 1) {
+    return 0;
+  }
+
+  if (dir == direction::kForward) {
+    double accumulated_dist = 0.0;
+    for (std::size_t i = node_idx + 1; i < polyline.size(); ++i) {
+      accumulated_dist += geo::distance(polyline[i - 1], polyline[i]);
+      if (accumulated_dist >= min_distance) {
+        return static_cast<std::uint16_t>(i);
+      }
+    }
+    return static_cast<std::uint16_t>(polyline.size() - 1);
+  } else {
+    double accumulated_dist = 0.0;
+    for (int i = static_cast<int>(node_idx) - 1; i >= 0; --i) {
+      accumulated_dist +=
+          geo::distance(polyline[static_cast<std::size_t>(i + 1)],
+                        polyline[static_cast<std::size_t>(i)]);
+      if (accumulated_dist >= min_distance) {
+        return static_cast<std::uint16_t>(i);
+      }
+    }
+    return 0;
+  }
 }
 
 }  // namespace osr

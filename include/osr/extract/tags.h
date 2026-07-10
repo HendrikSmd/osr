@@ -84,9 +84,11 @@ private:
           oneway_ |= value == "yes"sv || oneway_reverse_;
           break;
         case cista::hash("junction"):
+          junction_ = value;
           oneway_ |= value == "roundabout"sv;
           circular |= value == "circular"sv;
           break;
+        case cista::hash("footway"): footway_ = value; break;
         case cista::hash("oneway:bicycle"):
           not_oneway_bike_ = value == "no"sv;
           break;
@@ -229,6 +231,20 @@ private:
         case cista::hash("maxweight"): max_weight_ = value; break;
         case cista::hash("maxaxleload"): max_axle_load_ = value; break;
         case cista::hash("maxaxles"): max_axles_ = value; break;
+        case cista::hash("toll"): toll_ = value == "yes"sv; break;
+        case cista::hash("lanes"): lanes_ = value; break;
+        case cista::hash("lanes:forward"): lanes_forward_ = value; break;
+        case cista::hash("lanes:backward"): lanes_backward_ = value; break;
+        case cista::hash("turn:lanes"): turn_lanes_ = value; break;
+        case cista::hash("turn:lanes:forward"):
+          turn_lanes_forward_ = value;
+          break;
+        case cista::hash("turn:lanes:backward"):
+          turn_lanes_backward_ = value;
+          break;
+        case cista::hash("turn:lanes:both_ways"):
+          turn_lanes_both_ways_ = value;
+          break;
         case cista::hash("toll"): toll_ = value == "yes"sv; break;
         case cista::hash("incline"): {
           has_incline_ = true;
@@ -397,12 +413,32 @@ public:
 
   // https://wiki.openstreetmap.org/wiki/Key:maxaxles
   std::string_view max_axles_;
+  // https://wiki.openstreetmap.org/wiki/Key:lanes
+  std::string_view lanes_;
+
+  // https://wiki.openstreetmap.org/wiki/Forward_%26_backward,_left_%26_right
+  std::string_view lanes_forward_;
+
+  // https://wiki.openstreetmap.org/wiki/Forward_%26_backward,_left_%26_right
+  std::string_view lanes_backward_;
+
+  // https://wiki.openstreetmap.org/wiki/Key:turn#Indicated_turns_by_lane
+  std::string_view turn_lanes_;
+  std::string_view turn_lanes_forward_;
+  std::string_view turn_lanes_backward_;
+  std::string_view turn_lanes_both_ways_;
 
   // https://wiki.openstreetmap.org/wiki/Key:name
   std::string_view name_;
 
   // https://wiki.openstreetmap.org/wiki/Key:ref
   std::string_view ref_;
+
+  // https://wiki.openstreetmap.org/wiki/Key:junction
+  std::string_view junction_;
+
+  // https://wiki.openstreetmap.org/wiki/Key:footway
+  std::string_view footway_;
 
   // https://wiki.openstreetmap.org/wiki/Key:vehicle
   bool is_destination_{false};

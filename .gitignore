@@ -5,3 +5,6 @@
 /.clang-tidy
 /.vs
 /out
+/.vscode
+/.codegraph
+.clangd

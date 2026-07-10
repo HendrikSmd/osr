@@ -60,6 +60,23 @@ Directory with all created files after extract (only routing data has to be in-m
 ./osr-backend -d osr-planet -s web
 ```
 
+### HTTP server for the test case generator
+
+Start the backend with the extracted routing data and the `web` directory, and
+enable its test framework endpoints with `--test_features`:
+
+```bash
+./osr-backend -d osr-planet -s web --test_features
+```
+
+Then open `http://localhost:8000` to use the test case generator tools in the
+web UI. The backend uses port `8000` by default; use `-p` to choose another
+port. The test framework endpoints are disabled unless `--test_features` is
+set. They provide test case loading and saving, available `.pbf` feeds, and
+instruction inspection. Test cases are saved to
+`test/instruction-test-cases.json`, and the available feeds are read from the
+`test/` directory in the source tree.
+
 ## Data Model
 
 <p align="center"><img src="docs/data_model.png"></p>

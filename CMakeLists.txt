@@ -134,6 +134,8 @@ target_link_libraries(osr
         ${osr-resource-libs}
 )
 
+set(ABS_TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test")
+
 # --- MAIN ---
 add_executable(osr-extract exe/extract.cc)
 target_link_libraries(osr-extract osr conf ${osr-resource-libs})
@@ -145,6 +147,9 @@ file(GLOB_RECURSE osr-backend-src exe/backend/*.cc)
 add_executable(osr-backend ${osr-backend-src})
 target_link_libraries(osr-backend osr web-server conf boost-json ${osr-resource-libs})
 target_include_directories(osr-backend PRIVATE exe/backend/include)
+target_compile_definitions(osr-backend PRIVATE
+        TEST_DATA_DIR="${ABS_TEST_DATA_DIR}"
+)
 
 # --- TEST ---
 configure_file(
@@ -153,12 +158,15 @@ configure_file(
 )
 file(GLOB_RECURSE osr-test-files test/*cc)
 add_executable(osr-test ${osr-test-files})
-target_include_directories(osr-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
+target_include_directories(osr-test PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated test/include)
 target_link_libraries(osr-test gmock osr boost-json expat ${osr-resource-libs})
 add_test(NAME osr-test COMMAND $<TARGET_FILE:osr-test>)
 set_tests_properties(osr-test PROPERTIES
         LABELS osr
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(osr-test PRIVATE
+        TEST_DATA_DIR="${ABS_TEST_DATA_DIR}"
+)
 
 # --- MIMALLOC ---
 if (OSR_MIMALLOC)

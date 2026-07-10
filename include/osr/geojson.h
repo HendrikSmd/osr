@@ -8,8 +8,7 @@
 
 #include "boost/json.hpp"
 
-#include "fmt/ranges.h"
-#include "fmt/std.h"
+#include "boost/json.hpp"
 
 #include "utl/pairwise.h"
 #include "utl/pipes.h"
@@ -44,7 +43,9 @@ boost::json::value to_line_string(std::initializer_list<T>&& line) {
 inline boost::json::object to_featurecollection_value(
     ways const& w,
     std::optional<osr::path> const& p,
-    bool const with_properties = true) {
+    bool const with_properties = true,
+    bool const with_instructions = false,
+    bool const with_osm_nodes = false) {
   return boost::json::object{
       {"type", "FeatureCollection"},
       {"metadata", with_properties
@@ -53,26 +54,42 @@ inline boost::json::object to_featurecollection_value(
                        : boost::json::value{{}}},
       {"features",
        utl::all(p->segments_) | utl::transform([&](const path::segment& s) {
-         return boost::json::object{
-             {"type", "Feature"},
-             {
-                 "properties",
-                 {{"level", s.from_level_.to_float()},
-                  {"osm_way_id", s.way_ == way_idx_t::invalid()
-                                     ? 0U
-                                     : to_idx(w.way_osm_idx_[s.way_])},
-                  {"cost", s.cost_},
-                  {"distance", s.dist_}},
-             },
-             {"geometry", to_line_string(s.polyline_)}};
+         boost::json::object properties = {
+             {"level", s.from_level_.to_float()},
+             {"osm_way_id", s.way_ == way_idx_t::invalid()
+                                ? 0U
+                                : to_idx(w.way_osm_idx_[s.way_])},
+             {"cost", s.cost_},
+             {"distance", s.dist_},
+             {"mode", static_cast<int>(s.mode_)},
+             {"is_reverse", s.is_reverse_}};
+
+         if (with_instructions) {
+           properties["instruction"] = to_json(s.instruction_annotation_, w);
+         }
+
+         if (with_osm_nodes) {
+           properties["segment_from"] = s.from_ == node_idx_t::invalid()
+                                            ? 0U
+                                            : to_idx(w.node_to_osm_[s.from_]);
+           properties["segment_to"] = s.to_ == node_idx_t::invalid()
+                                          ? 0U
+                                          : to_idx(w.node_to_osm_[s.to_]);
+         }
+
+         return boost::json::object{{"type", "Feature"},
+                                    {"properties", std::move(properties)},
+                                    {"geometry", to_line_string(s.polyline_)}};
        }) | utl::emplace_back_to<boost::json::array>()}};
 }
 
 inline std::string to_featurecollection(ways const& w,
                                         std::optional<osr::path> const& p,
-                                        bool const with_properties = true) {
-  return boost::json::serialize(
-      to_featurecollection_value(w, p, with_properties));
+                                        bool const with_properties = true,
+                                        bool const with_instructions = false,
+                                        bool const with_osm_nodes = false) {
+  return boost::json::serialize(to_featurecollection_value(
+      w, p, with_properties, with_instructions, with_osm_nodes));
 }
 
 inline boost::json::value to_point(point const p) {
