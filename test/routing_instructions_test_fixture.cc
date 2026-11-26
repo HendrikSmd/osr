@@ -21,14 +21,16 @@ struct cached_dataset {
 };
 
 static std::mutex g_cache_mutex;
-static std::unordered_map<std::string, std::shared_ptr<cached_dataset>> g_dataset_cache;
+static std::unordered_map<std::string, std::shared_ptr<cached_dataset>>
+    g_dataset_cache;
 
 std::shared_ptr<cached_dataset> get_dataset(fs::path const& pbf_path) {
   std::lock_guard<std::mutex> lock(g_cache_mutex);
   auto const key = pbf_path.string();
   auto it = g_dataset_cache.find(key);
   if (it == g_dataset_cache.end()) {
-    auto const dir = fmt::format("/tmp/osr_test/{}", pbf_path.filename().string());
+    auto const dir =
+        fmt::format("/tmp/osr_test/{}", pbf_path.filename().string());
     auto ec = std::error_code{};
     fs::remove_all(dir, ec);
     fs::create_directories(dir, ec);
@@ -37,7 +39,8 @@ std::shared_ptr<cached_dataset> get_dataset(fs::path const& pbf_path) {
     auto dataset = std::make_shared<cached_dataset>();
     dataset->dir_ = dir;
     dataset->w_ = std::make_unique<ways>(dir, cista::mmap::protection::READ);
-    dataset->l_ = std::make_unique<lookup>(*dataset->w_, dir, cista::mmap::protection::READ);
+    dataset->l_ = std::make_unique<lookup>(*dataset->w_, dir,
+                                           cista::mmap::protection::READ);
     g_dataset_cache[key] = dataset;
     return dataset;
   }
@@ -57,7 +60,8 @@ void test_instructions(
     const auto& w = *dataset->w_;
     const auto& l = *dataset->l_;
 
-    auto p = route(w, l, from, to, osr::get_parameters(sp), sp, direction, algo);
+    auto p =
+        route(w, l, from, to, osr::get_parameters(sp), sp, direction, algo);
     ASSERT_TRUE(p.has_value());
     instruction_annotator annotator(w);
     annotator.annotate(p.value());
@@ -74,7 +78,16 @@ void test_instructions(
       actions.push_back(s.instruction_annotation_);
     }
 
-    EXPECT_EQ(expected_actions, actions);
+    EXPECT_EQ(expected_actions.size(), actions.size());
+    for (auto i = std::size_t{0};
+         i < expected_actions.size() && i < actions.size(); ++i) {
+      if (expected_actions[i] != actions[i]) {
+        ADD_FAILURE() << "Instruction " << i << ": expected "
+                      << boost::json::serialize(to_json(expected_actions[i], w))
+                      << ", got "
+                      << boost::json::serialize(to_json(actions[i], w));
+      }
+    }
   } catch (std::exception const& e) {
     ADD_FAILURE() << "Unexpected exception for " << pbf_path << ": "
                   << e.what();
@@ -85,11 +98,13 @@ void test_instructions(
 
 TEST_P(routing_instructions_test_fixture, ValidatesInstructions) {
   const auto& test_params = GetParam();
+  if (!fs::is_regular_file(test_params.osm_file)) {
+    GTEST_SKIP() << "osm.pbf feed file not found: " << test_params.osm_file;
+  }
 
   test_instructions(test_params.osm_file, test_params.start, test_params.end,
                     test_params.profile, test_params.routing_algo,
                     test_params.direction, test_params.expected_actions);
 }
 
-}
-
+}  // namespace osr::test

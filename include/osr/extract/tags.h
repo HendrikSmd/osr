@@ -245,7 +245,6 @@ private:
         case cista::hash("turn:lanes:both_ways"):
           turn_lanes_both_ways_ = value;
           break;
-        case cista::hash("toll"): toll_ = value == "yes"sv; break;
         case cista::hash("incline"): {
           has_incline_ = true;
           is_incline_down_ = value == "down"sv || value.starts_with("-"sv);

@@ -12,7 +12,7 @@ std::optional<path> route(ways const& w,
                           search_profile const sp,
                           direction const dir,
                           routing_algorithm const algo) {
-  return osr::route(params, w, l, sp, from, {to}, 900, dir,
+  return osr::route(params, w, l, sp, from, to, std::chrono::seconds{900}, dir,
                     250.0, nullptr, nullptr, nullptr, algo);
 }
 
@@ -62,4 +62,4 @@ std::string extract_route_to_feature(std::string_view path,
   return to_featurecollection(w, *p, false);
 }
 
-}
+}  // namespace osr::test

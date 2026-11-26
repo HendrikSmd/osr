@@ -22,13 +22,15 @@ relative_direction get_relative_direction(const double angle) {
     return relative_direction::kStraight;
   }
   if (abs_angle <= 45) {
-    return is_left ? relative_direction::kSlightLeft : relative_direction::kSlightRight;
+    return is_left ? relative_direction::kSlightLeft
+                   : relative_direction::kSlightRight;
   }
   if (abs_angle <= 135) {
     return is_left ? relative_direction::kLeft : relative_direction::kRight;
   }
   if (abs_angle < 180) {
-    return is_left ? relative_direction::kSharpLeft : relative_direction::kSharpRight;
+    return is_left ? relative_direction::kSharpLeft
+                   : relative_direction::kSharpRight;
   }
 
   return relative_direction::kTurnAround;
@@ -38,10 +40,8 @@ bool is_rightish(relative_direction const direction) {
   switch (direction) {
     case relative_direction::kSlightRight:
     case relative_direction::kRight:
-    case relative_direction::kSharpRight:
-      return true;
-    default:
-      return false;
+    case relative_direction::kSharpRight: return true;
+    default: return false;
   }
 }
 
@@ -49,10 +49,8 @@ bool is_leftish(relative_direction const direction) {
   switch (direction) {
     case relative_direction::kSlightLeft:
     case relative_direction::kLeft:
-    case relative_direction::kSharpLeft:
-      return true;
-    default:
-      return false;
+    case relative_direction::kSharpLeft: return true;
+    default: return false;
   }
 }
 
@@ -60,10 +58,8 @@ bool is_slightish(relative_direction const dir) {
   switch (dir) {
     case relative_direction::kStraight:
     case relative_direction::kSlightRight:
-    case relative_direction::kSlightLeft:
-      return true;
-    default:
-      return false;
+    case relative_direction::kSlightLeft: return true;
+    default: return false;
   }
 }
 
@@ -72,7 +68,8 @@ double get_angle(geo::latlng const& p1,
                  geo::latlng const& p2) {
   const double b1 = geo::bearing(p1, shared);
   const double b2 = geo::bearing(shared, p2);
-  return normalize(b2 - b1); // [-180,180]
+  // Bearings increase clockwise, but positive turn angles indicate left.
+  return normalize(b1 - b2);  // [-180,180]
 }
 
-} // namespace osr
+}  // namespace osr

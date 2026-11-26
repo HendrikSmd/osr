@@ -290,7 +290,6 @@
 
     window.loadTestsFromServer = async () => {
         try {
-            // You'll need a GET endpoint on your server that returns the tests.json content
             const response = await fetch(`${window.origin}/api/test-framework/test-cases`);
             const tests = await response.json();
             testCases = [...tests]
@@ -991,16 +990,7 @@
             }
             return r;
         } catch (e) {
-<<<<<<< HEAD
-            console.log(e);
             return emptyFeatureCollection();
-=======
-            return {
-                "type": "FeatureCollection",
-                "metadata": {},
-                "features": []
-            };
->>>>>>> 6cb57dc (squashed commits)
         }
     };
 
@@ -1564,7 +1554,6 @@
         const pathColor = '#42a5f5';
 
         // Helper: Calculates XY based on the South-Arrival orientation
-        // AND your "negative is right" rule.
         const getXY = (relativeAngle) => {
             const rad = ((-relativeAngle - 90) * Math.PI) / 180;
             return {

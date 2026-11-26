@@ -53,6 +53,7 @@ bool is_accessible(ways const& w, way_segment const& ws, mode const m) {
       if (!w_props.is_bike_accessible()) return false;
       break;
     case mode::kCar:
+    case mode::kHgv:
       if (!w_props.is_car_accessible()) return false;
       break;
     case mode::kFerry:
